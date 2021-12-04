@@ -1,57 +1,62 @@
 defmodule Solution do
   def part1() do
-    {m, row, col} = input() |> to_map()
-
-    {g, e} =
-      Enum.reduce(0..(col - 1), {"", ""}, fn j, {g, e} ->
-        {ones, zeros} =
-          Enum.reduce(0..(row - 1), {0, 0}, fn i, {ones, zeros} ->
-            if Map.get(m, {i, j}) == "1" do
-              {ones + 1, zeros}
-            else
-              {ones, zeros + 1}
-            end
-          end)
-
-        IO.inspect("#{ones}, #{zeros}")
-
-        if ones > zeros do
-          {g <> "1", e <> "0"}
-        else
-          {g <> "0", e <> "1"}
-        end
-      end)
-
-    String.to_integer(g, 2) * String.to_integer(e, 2)
+    lst = input()
+    gamma = find1(lst, &>/2, "")
+    epsilon = find1(lst, &</2, "")
+    gamma * epsilon
   end
 
   def part2() do
-    {m, row, col} = input() |> to_map()
-    oxygen = m
-    co2 = m
+    lst = input()
+    oxygen = find2(lst, &>=/2, "")
+    co2 = find2(lst, &</2, "")
+    oxygen * co2
   end
 
-  def input() do
+  defp input() do
     File.stream!("./input.txt")
     |> Stream.map(&(&1 |> String.trim() |> String.graphemes()))
     |> Enum.to_list()
   end
 
-  def to_map(lst) do
-    row = Enum.count(lst)
-    col = lst |> List.first() |> Enum.count()
+  defp ones_and_zeros(lst) do
+    lst
+    |> Enum.reduce({0, 0}, fn [x | _], {ones, zeros} ->
+      if x == "1" do
+        {ones + 1, zeros}
+      else
+        {ones, zeros + 1}
+      end
+    end)
+  end
 
-    acc =
+  defp find1(lst, f, s) do
+    {ones, zeros} = ones_and_zeros(lst)
+
+    target = if f.(ones, zeros), do: "1", else: "0"
+
+    lst = lst |> Enum.map(&Enum.drop(&1, 1))
+
+    if List.first(lst) == [] do
+      String.to_integer(s <> target, 2)
+    else
+      find1(lst, f, s <> target)
+    end
+  end
+
+  defp find2([x], _f, s), do: (s <> Enum.join(x)) |> String.to_integer(2)
+
+  defp find2(lst, f, s) do
+    {ones, zeros} = ones_and_zeros(lst)
+
+    target = if f.(ones, zeros), do: "1", else: "0"
+
+    lst =
       lst
-      |> Enum.with_index()
-      |> Enum.reduce(%{}, fn {each, i}, acc ->
-        each
-        |> Enum.with_index()
-        |> Enum.reduce(acc, fn {c, j}, acc ->
-          Map.put(acc, {i, j}, c)
-        end)
+      |> Enum.flat_map(fn [x | rest] ->
+        if target == x, do: [rest], else: []
       end)
 
-    {acc, row, col}
+    find2(lst, f, s <> target)
   end
 end
