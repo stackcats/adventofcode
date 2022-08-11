@@ -15,22 +15,30 @@ defmodule Solution do
 
   def part2() do
     input()
-    |> Enum.reduce_while({0, 0, -1, 0, MapSet.new([{0, 0}])}, fn {d, n}, {x, y, dx, dy, acc} ->
+    |> Enum.reduce_while({0, 0, -1, 0, MapSet.new()}, fn {d, n}, {x, y, dx, dy, acc} ->
       {dx, dy} =
         case d do
           "R" -> turn_right(dx, dy)
           "L" -> turn_left(dx, dy)
         end
 
-      x = x + dx * n
-      y = y + dy * n
-
-      if MapSet.member?(acc, {x, y}) do
-        {:halt, abs(x) + abs(y)}
-      else
-        {:cont, {x, y, dx, dy, MapSet.put(acc, {x, y})}}
+      case has_line?(acc, 0, n, x, y, dx, dy) do
+        {x, y} -> {:halt, abs(x) + abs(y)}
+        set -> {:cont, {x + n * dx, y + n * dy, dx, dy, set}}
       end
     end)
+  end
+
+  def has_line?(set, n, n, _x, _y, _dx, _dy) do
+    set
+  end
+
+  def has_line?(set, i, n, x, y, dx, dy) do
+    if MapSet.member?(set, {x, y}) do
+      {x, y}
+    else
+      has_line?(MapSet.put(set, {x, y}), i + 1, n, x + dx, y + dy, dx, dy)
+    end
   end
 
   def turn_left(dx, dy) do
