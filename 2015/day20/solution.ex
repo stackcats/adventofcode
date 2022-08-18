@@ -1,33 +1,28 @@
 defmodule Solution do
-  @target 29_000_000
+  @target 2_900_000
+
   def part1() do
-    aux(1)
-  end
-
-  def aux(n) do
-    if factor(n) * 10 >= @target do
-      n
-    else
-      aux(n + 1)
+    for i <- 1..@target, j <- i..@target//i, reduce: %{} do
+      acc -> Map.update(acc, j, i, &(&1 + i))
     end
+    |> find_house(10)
   end
 
-  def factor(n) do
-    factor(2, n, %{})
-    |> Enum.reduce(1, fn {k, v}, acc ->
-      div(k ** (v + 1) - 1, k - 1) * acc
+  def part2() do
+    for i <- 1..@target, j <- i..min(@target, i + i * 50)//i, reduce: %{} do
+      acc -> Map.update(acc, j, i, &(&1 + i))
+    end
+    |> find_house(11)
+  end
+
+  def find_house(houses, times) do
+    1..@target
+    |> Enum.reduce_while(0, fn i, acc ->
+      if houses[i] * times >= @target * 10 do
+        {:halt, i}
+      else
+        {:cont, acc}
+      end
     end)
-  end
-
-  def factor(d, n, p) when d > n do
-    p
-  end
-
-  def factor(d, n, p) do
-    if rem(n, d) == 0 do
-      factor(d, div(n, d), Map.update(p, d, 1, &(&1 + 1)))
-    else
-      factor(d + 1, n, p)
-    end
   end
 end
