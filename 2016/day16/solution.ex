@@ -1,10 +1,20 @@
 defmodule Solution do
+  @s "01110110101001000"
+
   def part1() do
-    aux("01110110101001000", 272)
+    @s
+    |> String.graphemes()
+    |> aux(272)
+  end
+
+  def part2() do
+    @s
+    |> String.graphemes()
+    |> aux(35_651_584)
   end
 
   def aux(a, len) do
-    if String.length(a) < len do
+    if length(a) < len do
       a |> next() |> aux(len)
     else
       a
@@ -26,7 +36,14 @@ defmodule Solution do
 
   def checksum(xs) do
     if xs |> length() |> odd?() do
+      xs |> Enum.join()
+    else
       xs
+      |> Enum.chunk_every(2)
+      |> Enum.map(fn [a, b] ->
+        if a == b, do: "1", else: "0"
+      end)
+      |> checksum()
     end
   end
 
