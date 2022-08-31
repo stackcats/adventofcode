@@ -1,15 +1,28 @@
 defmodule Solution do
-  def part1() do
-    lst =
-      "abcdefgh"
-      |> String.graphemes()
+  @s "abcdefgh"
 
+  def part1() do
     input()
+    |> run(String.graphemes(@s))
+  end
+
+  def part2() do
+    ops = input()
+
+    @s
+    |> String.graphemes()
+    |> permutations()
+    |> Enum.find(fn each -> run(ops, each) == "fbgdceah" end)
+    |> Enum.join()
+  end
+
+  def run(ops, lst) do
+    ops
     |> Enum.reduce(lst, &scrambling/2)
     |> Enum.join()
   end
 
-  def scrambling(op, lst, reverse? \\ false) do
+  def scrambling(op, lst) do
     case op do
       ["swap", "position", a, "with", "position", b] ->
         a = String.to_integer(a)
@@ -30,22 +43,14 @@ defmodule Solution do
         end)
 
       ["rotate", "left", a | _] ->
-        if reverse? do
-          scrambling(["rotate", "right", a], lst)
-        else
-          a = String.to_integer(a)
-          {left, right} = Enum.split(lst, a)
-          right ++ left
-        end
+        a = String.to_integer(a)
+        {left, right} = Enum.split(lst, a)
+        right ++ left
 
       ["rotate", "right", a | _] ->
-        if reverse? do
-          scrambling(["rotate", "left", a], lst)
-        else
-          a = String.to_integer(a)
-          {left, right} = Enum.split(lst, length(lst) - a)
-          right ++ left
-        end
+        a = String.to_integer(a)
+        {left, right} = Enum.split(lst, length(lst) - a)
+        right ++ left
 
       ["rotate", "based", "on", "position", "of", "letter", a] ->
         # TODO
@@ -73,6 +78,11 @@ defmodule Solution do
         end)
     end
   end
+
+  def permutations([]), do: [[]]
+
+  def permutations(list),
+    do: for(elem <- list, rest <- permutations(list -- [elem]), do: [elem | rest])
 
   def input() do
     File.stream!("./input.txt")
