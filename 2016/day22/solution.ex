@@ -16,6 +16,53 @@ defmodule Solution do
     end
   end
 
+  def part2() do
+    grid = input()
+    {x, _} = grid |> Map.keys() |> Enum.max()
+    top_right = {x, 0}
+    target = {x - 1, 0}
+
+    grid
+    |> Enum.filter(fn {_, v} -> v.avail >= grid[top_right].used end)
+    |> Enum.map(fn {k, _} ->
+      :queue.new()
+      |> :queue.snoc({k, 0})
+      |> bfs(target, grid, MapSet.new(), grid[k].avail)
+    end)
+    |> Enum.min()
+    |> then(&(&1 + 33 * 5 + 1))
+  end
+
+  def bfs(q, target, grid, visited, capacity) do
+    {pos, steps} = :queue.head(q)
+    q = :queue.tail(q)
+
+    cond do
+      pos == target ->
+        steps
+
+      MapSet.member?(visited, pos) ->
+        bfs(q, target, grid, visited, capacity)
+
+      true ->
+        neighbors(pos, grid, capacity)
+        |> Enum.reduce(q, fn new_pos, q ->
+          :queue.in({new_pos, steps + 1}, q)
+        end)
+        |> bfs(target, grid, MapSet.put(visited, pos), capacity)
+    end
+  end
+
+  def neighbors({x, y}, grid, capacity) do
+    [{-1, 0}, {0, 1}, {1, 0}, {0, -1}]
+    |> Enum.filter(fn {dx, dy} ->
+      nx = dx + x
+      ny = dy + y
+      grid[{nx, ny}] != nil && grid[{nx, ny}].used <= capacity
+    end)
+    |> Enum.map(fn {dx, dy} -> {x + dx, y + dy} end)
+  end
+
   def input() do
     File.stream!("./input.txt")
     |> Stream.drop(2)
