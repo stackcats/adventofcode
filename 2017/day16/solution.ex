@@ -1,12 +1,43 @@
 defmodule Solution do
+  @init ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p"]
+
   def part1() do
-    input()
+    @init
+    |> dance(input())
+    |> Enum.join()
+  end
+
+  def part2() do
+    moves = input()
+
+    # find repeated size
+    len =
+      1..1_000_000_000
+      |> Enum.reduce_while({@init, MapSet.new()}, fn _, {acc, set} ->
+        if MapSet.member?(set, acc) do
+          {:halt, {acc, set}}
+        else
+          {:cont, {dance(acc, moves), MapSet.put(set, acc)}}
+        end
+      end)
+      |> elem(1)
+      |> MapSet.size()
+
+    for _ <- 1..rem(1_000_000_000, len), reduce: @init do
+      acc -> dance(acc, moves)
+    end
+    |> Enum.join()
+  end
+
+  def dance(lst, moves) do
+    moves
     |> Enum.reduce(
-      ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p"],
+      lst,
       fn cmd, acc ->
         case cmd do
           {"s", x} ->
-            acc
+            {f, r} = Enum.split(acc, 16 - x)
+            r ++ f
 
           {"x", [a, b]} ->
             swap_by_position(acc, a, b)
@@ -21,12 +52,12 @@ defmodule Solution do
   def swap_by_position(lst, a, b) do
     lst
     |> List.replace_at(a, Enum.at(lst, b))
-    |> List.replace_at(b, Enum.at(a))
+    |> List.replace_at(b, Enum.at(lst, a))
   end
 
   def swap(lst, x, y) do
-    a = Enum.find_index(lst, x)
-    b = Enum.find_index(lst, y)
+    a = Enum.find_index(lst, &(&1 == x))
+    b = Enum.find_index(lst, &(&1 == y))
     swap_by_position(lst, a, b)
   end
 
