@@ -1,25 +1,50 @@
 defmodule Solution do
   def part1() do
-    map = input()
-    IO.inspect(map)
-    # map
-    # |> Map.keys()
-    # |> Enum.filter(fn [a, b] -> a == 0 || b == 0 end)
-    # |> Enum.map(fn start ->
-    #   dfs(map, start, MapSet.new())
-    # end)
+    input()
+    |> run(fn x -> elem(x, 1) end)
   end
 
-  def dfs(map, pin, vistied, cur, ans) do
-    if MapSet.member?(vistied, pin) do
-      [cur | ans]
-    else
-      vistied = MapSet.put(vistied, pin)
+  def part2() do
+    input()
+    |> run(&Function.identity/1)
+  end
 
-      map[pin]
-      |> Enum.map(fn p ->
-        dfs(map, p, vistied, cur ++ [p], ans)
-      end)
+  def run(components, max_fn) do
+    bfs(:queue.from_list([{0, 0, 0, components}]), [])
+    |> Enum.max_by(max_fn)
+    |> elem(1)
+  end
+
+  def bfs(q, bridges) do
+    if :queue.is_empty(q) do
+      bridges
+    else
+      {port, len, score, components} = :queue.head(q)
+      q = :queue.tail(q)
+
+      lst =
+        components
+        |> Enum.flat_map(fn [a, b] = component ->
+          cond do
+            a == port -> [{b, component}]
+            b == port -> [{a, component}]
+            true -> []
+          end
+        end)
+
+      if lst == [] do
+        bfs(q, [{len, score} | bridges])
+      else
+        score = score + port
+
+        q =
+          lst
+          |> Enum.reduce(q, fn {p, component}, q ->
+            :queue.in({p, len + 1, score + p, MapSet.delete(components, component)}, q)
+          end)
+
+        bfs(q, bridges)
+      end
     end
   end
 
@@ -32,24 +57,6 @@ defmodule Solution do
       |> Enum.map(&String.to_integer/1)
     end)
     |> Enum.to_list()
-    |> to_map(%{})
-  end
-
-  def to_map([_], acc), do: acc
-
-  def to_map([[a1, b1] = x | xs], acc) do
-    acc =
-      xs
-      |> Enum.reduce(acc, fn [a2, b2] = y, acc ->
-        if a1 == a2 || b1 == a2 || a1 == b2 || b1 == b2 do
-          acc
-          |> Map.update(x, [y], &[y | &1])
-          |> Map.update(y, [x], &[x | &1])
-        else
-          acc
-        end
-      end)
-
-    to_map(xs, acc)
+    |> MapSet.new()
   end
 end
