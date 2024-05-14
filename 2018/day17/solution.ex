@@ -1,99 +1,70 @@
 defmodule Solution do
-  @spring_position {0, 500}
-
   def part1() do
-    grid = input() |> Map.put(@spring_position, "+")
-
-    IO.inspect(grid_border(grid))
-
-    dfs(grid, @spring_position, grid_border(grid))
-    |> tap(&print/1)
-    |> Map.values()
-    |> Enum.count(fn c -> c in ["|", "~"] end)
+    run(["~", "|"])
   end
 
-  def dfs(grid, {i, j}, {u, d, l, r}) when i < u or i > d or j < l or j > r do
-    grid
+  def part2() do
+    run(["~"])
   end
 
-  def dfs(grid, {i, j}, {u, d, l, r}) do
-    print(grid)
-    IO.gets("enter")
+  def run(targets) do
+    mp = input()
+    {min_y, max_y} = mp |> Map.keys() |> Enum.map(&elem(&1, 0)) |> Enum.min_max()
 
-    c = grid[{i + 1, j}]
+    flow(mp, {0, 500}, max_y)
+    |> Enum.count(fn {{y, _}, v} -> y in min_y..max_y and v in targets end)
+  end
 
-    IO.inspect({i, j})
+  def flow(mp, {y, _x}, max_y) when y + 1 > max_y, do: mp
 
-    cond do
-      # grid[{i, j}] in ["#", "~"] ->
-      #   grid
+  def flow(mp, curr, max_y) do
+    mp
+    |> flow_v(curr, max_y)
+    |> flow_h(curr, -1, max_y)
+    |> flow_h(curr, 1, max_y)
+    |> then(fn mp ->
+      if has_wall?(mp, curr, -1) and has_wall?(mp, curr, 1) do
+        mp |> fill(curr, -1) |> fill(curr, 1)
+      else
+        mp
+      end
+    end)
+  end
 
-      c in ["#", "~"] ->
-        left = check_left(grid, {i, j}, l)
-        right = check_right(grid, {i, j}, r)
-        IO.inspect({left, right})
+  def flow_v(mp, {y, x}, max_y) do
+    down = {y + 1, x}
 
-        case {left, right} do
-          {nil, nil} ->
-            grid =
-              if grid[{i, j - 1}] == nil do
-                grid
-                |> Map.put({i, j - 1}, "|")
-                |> dfs({i, j - 1}, {u, d, l, r})
-              else
-                grid
-              end
-
-            if grid[{i, j + 1}] == nil do
-              grid
-              |> Map.put({i, j + 1}, "|")
-              |> dfs({i, j + 1}, {u, d, l, r})
-            else
-              grid
-            end
-
-          # |> dfs({i, j + 1}, {u, d, l, r})
-
-          {left, nil} ->
-            for k <- left..(j - 1), reduce: grid do
-              acc -> Map.put(acc, {i, k}, "|")
-            end
-            |> dfs({i, j + 1}, {u, d, l, r})
-
-          {nil, right} ->
-            for k <- (j + 1)..right, reduce: grid do
-              acc -> Map.put(acc, {i, k}, "|")
-            end
-            |> dfs({i, j - 1}, {u, d, l, r})
-
-          {left, right} ->
-            for k <- left..right, reduce: grid do
-              acc -> Map.put(acc, {i, k}, "~")
-            end
-            |> dfs({i - 1, j}, {u, d, l, r})
-        end
-
-      c == nil ->
-        Map.put(grid, {i + 1, j}, "|")
-        |> dfs({i + 1, j}, {u, d, l, r})
+    if mp[down] == nil do
+      Map.put(mp, down, "|") |> flow(down, max_y)
+    else
+      mp
     end
   end
 
-  def check_left(grid, {i, j}, l) do
-    cond do
-      j < l || grid[{i, j - 1}] == "|" -> nil
-      grid[{i + 1, j}] in ["#", "~"] && grid[{i, j - 1}] == "#" -> j
-      grid[{i + 1, j}] in ["#", "~"] && grid[{i, j - 1}] == nil -> check_left(grid, {i, j - 1}, l)
-      true -> nil
+  def flow_h(mp, {y, x}, dx, max_y) do
+    next = {y, x + dx}
+
+    if mp[{y + 1, x}] in ["#", "~"] and mp[next] == nil do
+      Map.put(mp, next, "|") |> flow(next, max_y)
+    else
+      mp
     end
   end
 
-  def check_right(grid, {i, j}, r) do
+  def fill(mp, {y, x} = curr, dx) do
+    if mp[curr] == "#" do
+      mp
+    else
+      mp |> Map.put(curr, "~") |> fill({y, x + dx}, dx)
+    end
+  end
+
+  def has_wall?(mp, {y, x}, dx) do
     cond do
-      j > r || grid[{i, j + 1}] == "|" -> nil
-      grid[{i + 1, j}] in ["#", "~"] && grid[{i, j + 1}] == "#" -> j
-      grid[{i + 1, j}] in ["#", "~"] && grid[{i, j + 1}] == nil -> check_left(grid, {i, j + 1}, r)
-      true -> nil
+      mp[{y, x + dx}] == "#" -> true
+      mp[{y, x + dx}] == nil -> false
+      mp[{y + 1, x}] not in ["#", "~"] -> false
+      true -> has_wall?(mp, {y, x + dx}, dx)
     end
   end
 
@@ -105,39 +76,13 @@ defmodule Solution do
         Regex.scan(~r/\d+/, s)
         |> Enum.flat_map(fn x -> x |> Enum.map(&String.to_integer/1) end)
 
-      if String.starts_with?(s, "x"), do: {l..r, p}, else: {p, l..r}
+      if String.starts_with?(s, "x"), do: {l..r, p..p}, else: {p..p, l..r}
     end)
-    |> Enum.reduce(%{}, fn {y, x}, acc ->
-      if is_integer(y) do
-        for i <- x, reduce: acc do
-          acc -> Map.put(acc, {y, i}, "#")
-        end
-      else
-        for i <- y, reduce: acc do
-          acc -> Map.put(acc, {i, x}, "#")
-        end
+    |> Enum.reduce(%{}, fn {ys, xs}, acc ->
+      for y <- ys, x <- xs, reduce: acc do
+        acc ->
+          Map.put(acc, {y, x}, "#")
       end
     end)
-  end
-
-  def grid_border(grid) do
-    grid
-    |> Enum.reduce({10000, 0, 10000, 0}, fn {{y, x}, _}, {u, d, l, r} ->
-      {min(u, y), max(d, y), min(l, x), max(r, x)}
-    end)
-  end
-
-  def print(grid) do
-    {u, d, l, r} = grid_border(grid)
-
-    for i <- u..d do
-      for j <- (l - 1)..(r + 1) do
-        IO.write(Map.get(grid, {i, j}, " "))
-      end
-
-      IO.puts("")
-    end
-
-    IO.puts("")
   end
 end
