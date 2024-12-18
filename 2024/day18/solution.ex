@@ -6,29 +6,35 @@ defmodule Solution do
   @ct 1024
 
   def part1() do
-    input() |> Enum.take(@ct) |> shortest_path() |> MapSet.size()
+    input() |> Enum.take(@ct) |> shortest_path()
   end
 
   def part2() do
-    {lft, rht} = input() |> Enum.split(@ct)
+    g = input() |> Enum.to_list()
+    n = find_cut(g, @ct + 1, length(g))
 
-    rht
-    |> Enum.reduce_while(MapSet.new(lft), fn pos, acc ->
-      acc = MapSet.put(acc, pos)
-
-      if shortest_path(acc) == :error do
-        {:halt, pos}
-      else
-        {:cont, acc}
-      end
-    end)
+    Enum.at(g, n - 1)
     |> Enum.map(&Integer.to_string/1)
     |> Enum.join(",")
   end
 
+  def find_cut(_g, l, r) when l >= r, do: l
+
+  def find_cut(g, l, r) do
+    m = div(l + r, 2)
+
+    g
+    |> Enum.take(m)
+    |> shortest_path()
+    |> case do
+      :error -> find_cut(g, l, m)
+      _ -> find_cut(g, m + 1, r)
+    end
+  end
+
   def shortest_path(g) do
-    :queue.from_list([{[0, 0], %MapSet{}}])
-    |> bfs(g, %MapSet{})
+    :queue.from_list([{[0, 0], 0}])
+    |> bfs(MapSet.new(g), %MapSet{})
   end
 
   def bfs(q, g, seen) do
@@ -36,13 +42,13 @@ defmodule Solution do
       {:empty, _} ->
         :error
 
-      {{:value, {[x, y] = curr, path}}, q} ->
+      {{:value, {[x, y] = curr, ct}}, q} ->
         cond do
           curr in seen ->
             bfs(q, g, seen)
 
           curr == @exit ->
-            path
+            ct
 
           curr in g ->
             bfs(q, g, seen)
@@ -52,11 +58,11 @@ defmodule Solution do
 
           true ->
             seen = MapSet.put(seen, curr)
-            path = MapSet.put(path, curr)
+            ct = ct + 1
 
             [{-1, 0}, {0, 1}, {1, 0}, {0, -1}]
             |> Enum.reduce(q, fn {dx, dy}, q ->
-              :queue.in({[x + dx, y + dy], path}, q)
+              :queue.in({[x + dx, y + dy], ct}, q)
             end)
             |> bfs(g, seen)
         end
